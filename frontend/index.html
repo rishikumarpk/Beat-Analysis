@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Beat Analyzer — Tamil Music Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg: #0d3c3f;
+  --bg2: #080a42;
+  --bg3: #1a1f26;
+  --border: #1e2530;
+  --border2: #2a3342;
+  --accent: #00d4aa;
+  --accent2: #0099ff;
+  --accent3: #ff6b35;
+  --accent4: #c084fc;
+  --text: #e8edf2;
+  --text2: #8a97a8;
+  --text3: #4a5568;
+  --success: #22c55e;
+  --warn: #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── HERO HEADER ── */
+.hero {
+  padding: 3rem 2rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.hero-text h1 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.hero-text h1 span { color: var(--accent); }
+.hero-text p {
+  margin-top: 0.75rem;
+  color: var(--text2);
+  font-size: 1rem;
+  max-width: 520px;
+  line-height: 1.6;
+}
+.pill {
+  display: inline-block;
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  border-radius: 100px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* ── UPLOAD ZONE ── */
+.upload-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem;
+}
+.upload-zone {
+  border: 2px dashed var(--border2);
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+}
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(0,212,170,0.04), transparent 70%);
+  pointer-events: none;
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--accent);
+  background: rgba(0,212,170,0.04);
+}
+.upload-icon {
+  width: 48px; height: 48px;
+  background: rgba(0,212,170,0.1);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 22px;
+}
+.upload-zone h3 { font-size: 1.1rem; font-weight: 500; color: var(--text); }
+.upload-zone p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+.upload-zone .note {
+  margin-top: 1rem;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+}
+#fileInput { display: none; }
+
+/* ── PROGRESS ── */
+.progress-wrap {
+  max-width: 1400px; margin: 0 auto; padding: 0 2rem 1rem;
+  display: none;
+}
+.progress-bar-bg {
+  height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.progress-bar-fg {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.progress-label { font-size: 12px; color: var(--text2); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+/* ── META STRIP ── */
+.meta-strip {
+  max-width: 1400px; margin: 0 auto; padding: 0 2rem 1.5rem;
+  display: none;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.meta-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 18px;
+  min-width: 130px;
+}
+.meta-card .lbl { font-size: 11px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; }
+.meta-card .val { font-size: 1.6rem; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.meta-card .unit { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.meta-card.accent .val { color: var(--accent); }
+.meta-card.accent2 .val { color: var(--accent2); }
+.meta-card.accent3 .val { color: var(--accent3); }
+
+/* ── MAIN GRID ── */
+.main-grid {
+  max-width: 1400px; margin: 0 auto; padding: 0 2rem 4rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+.full { grid-column: 1 / -1; }
+
+/* ── PANELS ── */
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.panel-head {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.panel-head-left h2 { font-size: 15px; font-weight: 600; color: var(--text); }
+.panel-head-left p { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+.step-badge {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.panel-body { padding: 16px 20px; }
+
+/* ── CANVASES ── */
+.chart-wrap { position: relative; }
+.chart-wrap canvas { display: block; }
+
+/* ── FORMULA BOX ── */
+.formula-box {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  line-height: 1.8;
+}
+.formula-box .comment { color: var(--text3); }
+.formula-box .kw { color: var(--accent2); }
+.formula-box .num { color: var(--accent3); }
+
+/* ── EXPLANATION STEPS ── */
+.explain-steps {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 14px;
+}
+.step {
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(0,212,170,0.12);
+  color: var(--accent);
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,212,170,0.25);
+}
+.step-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+.step-text strong { color: var(--text); font-weight: 500; }
+
+/* ── BEAT GRID ── */
+.beat-grid-wrap {
+  display: flex; align-items: center; gap: 3px;
+  flex-wrap: wrap;
+  padding: 12px 0 4px;
+}
+.beat-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--border2);
+  transition: background 0.15s, transform 0.1s;
+}
+.beat-dot.active { background: var(--accent); transform: scale(1.4); }
+.beat-dot.played { background: rgba(0,212,170,0.3); }
+
+/* ── SPECTROGRAM CANVAS ── */
+#spectrogramCanvas {
+  width: 100%;
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+
+/* ── LOADING ── */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,12,15,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  display: none;
+  flex-direction: column; gap: 16px;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay p { color: var(--text2); font-size: 14px; }
+
+/* ── EMPTY STATE ── */
+.empty-graph {
+  display: flex; align-items: center; justify-content: center;
+  height: 200px;
+  color: var(--text3);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── BEAT INDICATOR ── */
+.beat-indicator {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0 0;
+}
+.beat-pulse {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(0,212,170,0.4);
+}
+.beat-pulse.pulsing {
+  animation: pulse 0.3s ease-out;
+}
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,212,170,0.6); }
+  50% { transform: scale(1.4); box-shadow: 0 0 0 8px rgba(0,212,170,0.2); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,212,170,0); }
+}
+
+/* ── AUDIO PLAYER ── */
+.player-wrap {
+  display: none;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 0 2rem 1.5rem;
+  max-width: 1400px;
+  margin-left: auto; margin-right: auto;
+  align-items: center; gap: 16px;
+  flex-wrap: wrap;
+}
+.player-wrap audio { flex: 1; min-width: 200px; height: 36px; }
+.player-file { font-size: 13px; color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+
+/* ── NOTE BOXES ── */
+.note-box {
+  background: rgba(0,153,255,0.07);
+  border: 1px solid rgba(0,153,255,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #93c5fd;
+  line-height: 1.6;
+  margin-top: 10px;
+}
+.note-box.green {
+  background: rgba(0,212,170,0.07);
+  border-color: rgba(0,212,170,0.2);
+  color: #6ee7d4;
+}
+.note-box.orange {
+  background: rgba(255,107,53,0.07);
+  border-color: rgba(255,107,53,0.2);
+  color: #fdba74;
+}
+
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.tag {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text3); border-radius: 4px; padding: 2px 7px;
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Analyzing audio…</p>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-text">
+    <div class="pill">SIGNAL PROCESSING · FFT · BEAT DETECTION</div>
+    <h1>Fourier Beat<br><span>Analyzer</span></h1>
+    <p>Upload a Tamil song. The backend runs a full Fourier analysis pipeline — FFT, STFT spectrogram, onset detection, autocorrelation — and explains every step with live graphs.</p>
+  </div>
+</div>
+
+<!-- UPLOAD -->
+<div class="upload-wrap">
+  <div class="upload-zone" id="dropZone">
+    <div class="upload-icon">🎵</div>
+    <h3>Drop your Tamil song here</h3>
+    <p>or <label for="fileInput" style="color:var(--accent);cursor:pointer;text-decoration:underline;">browse files</label></p>
+    <p class="note">⚠ Must be WAV format · Mono or Stereo · Any sample rate</p>
+    <input type="file" id="fileInput" accept=".wav">
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-bar-bg"><div class="progress-bar-fg" id="progressFg"></div></div>
+  <div class="progress-label" id="progressLabel">Uploading…</div>
+</div>
+
+<!-- META STRIP -->
+<div class="meta-strip" id="metaStrip">
+  <div class="meta-card accent">
+    <div class="lbl">Detected BPM</div>
+    <div class="val" id="metaBpm">—</div>
+    <div class="unit">beats per minute</div>
+  </div>
+  <div class="meta-card accent2">
+    <div class="lbl">Sample Rate</div>
+    <div class="val" id="metaSr">—</div>
+    <div class="unit">Hz</div>
+  </div>
+  <div class="meta-card">
+    <div class="lbl">Duration</div>
+    <div class="val" id="metaDur">—</div>
+    <div class="unit">seconds</div>
+  </div>
+  <div class="meta-card accent3">
+    <div class="lbl">Beats Found</div>
+    <div class="val" id="metaBeats">—</div>
+    <div class="unit">onset peaks</div>
+  </div>
+  <div class="meta-card">
+    <div class="lbl">Samples</div>
+    <div class="val" id="metaSamples">—</div>
+    <div class="unit">total samples</div>
+  </div>
+</div>
+
+<!-- AUDIO PLAYER -->
+<div class="player-wrap" id="playerWrap">
+  <span class="player-file" id="playerFile">—</span>
+  <audio id="audioPlayer" controls></audio>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid" id="mainGrid">
+
+  <!-- 1. WAVEFORM -->
+  <div class="panel full">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>① Time Domain — Raw Waveform</h2>
+        <p>The raw audio signal: amplitude x[n] plotted against time. This is what Fourier analysis starts with.</p>
+      </div>
+      <div class="step-badge">STEP 1</div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-wrap" style="height:130px">
+        <canvas id="waveChart"></canvas>
+        <div class="empty-graph" id="waveEmpty">Upload a WAV file to see the waveform</div>
+      </div>
+      <div class="explain-steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>What you see:</strong> The speaker membrane displacement over time. Peaks = loud moments, zero crossings = silence transitions.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>Problem:</strong> Looking at the waveform tells us nothing about pitch, harmony, or beat frequency. We need to decompose it into frequencies — that's what the FFT does.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. FFT MAGNITUDE -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>② FFT — Magnitude Spectrum</h2>
+        <p>How much of each frequency is present in the entire song.</p>
+      </div>
+      <div class="step-badge">STEP 2</div>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        <span class="comment">// Discrete Fourier Transform</span><br>
+        X[k] = <span class="kw">Σ</span><sub>n=0</sub><sup>N-1</sup> x[n] · e<sup>−i<span class="num">2π</span>kn/N</sup><br>
+        <span class="comment">// Magnitude = |X[k]| = √(Re² + Im²)</span><br>
+        <span class="comment">// Frequency = k · sr / N  (Hz)</span>
+      </div>
+      <div class="chart-wrap" style="height:200px;margin-top:12px;">
+        <canvas id="fftChart"></canvas>
+        <div class="empty-graph" id="fftEmpty">Awaiting analysis</div>
+      </div>
+      <div class="note-box green" style="margin-top:10px;">
+        🟢 <strong>Bass region (60–250 Hz)</strong> highlighted. Tamil music has strong mridangam / kick energy here — this is our beat detection zone.
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. PHASE SPECTRUM -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>③ Phase Spectrum</h2>
+        <p>The angle φ[k] of each complex FFT bin — how offset each frequency component is.</p>
+      </div>
+      <div class="step-badge">STEP 3</div>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        X[k] = <span class="kw">|X[k]|</span> · e<sup>iφ[k]</sup><br>
+        φ[k] = <span class="kw">arctan</span>( Im{X[k]} / Re{X[k]} )<br>
+        <span class="comment">// Range: −π to +π radians</span>
+      </div>
+      <div class="chart-wrap" style="height:180px;margin-top:12px;">
+        <canvas id="phaseChart"></canvas>
+        <div class="empty-graph" id="phaseEmpty">Awaiting analysis</div>
+      </div>
+      <div class="note-box">
+        🔵 Phase is usually random-looking for music — but phase <em>differences</em> between consecutive STFT frames are used to detect onsets and transients precisely.
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SPECTROGRAM -->
+  <div class="panel full">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>④ STFT Spectrogram — Frequency × Time</h2>
+        <p>Short-Time Fourier Transform: slide a Hann window across time, compute FFT for each frame. Result = frequency content evolving over time.</p>
+      </div>
+      <div class="step-badge">STEP 4</div>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        STFT(x)[m,k] = <span class="kw">Σ</span><sub>n</sub> x[n] · w[n−mH] · e<sup>−i<span class="num">2π</span>kn/N</sup><br>
+        <span class="comment">// w = Hann window, H = hop size (512), N = frame size (2048)</span><br>
+        <span class="comment">// Each column = one FFT. Horizontal = time. Vertical = frequency.</span>
+      </div>
+      <canvas id="spectrogramCanvas" style="margin-top:12px;display:none;"></canvas>
+      <div class="empty-graph" id="specEmpty" style="height:220px;">Awaiting analysis</div>
+      <div class="explain-steps" style="margin-top:12px;">
+        <div class="step">
+          <div class="step-num">A</div>
+          <div class="step-text"><strong>Bright horizontal streaks</strong> = sustained tones (like a veena drone or sustained vocal note).</div>
+        </div>
+        <div class="step">
+          <div class="step-num">B</div>
+          <div class="step-text"><strong>Bright vertical flashes</strong> = transients (mridangam hits, kick drums, claps) — these are the beat moments.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">C</div>
+          <div class="step-text"><strong>Window size tradeoff:</strong> larger window → better frequency resolution, worse time resolution. We use 2048 samples (≈46ms at 44.1kHz).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. ONSET ENVELOPE -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>⑤ Onset Envelope + Beat Peaks</h2>
+        <p>Bass-band energy change per frame. Peaks = where you tap your foot.</p>
+      </div>
+      <div class="step-badge">STEP 5</div>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        <span class="comment">// 1. Band-pass 60–250 Hz (Butterworth filter)</span><br>
+        E[m] = <span class="kw">RMS</span>(bass_frame[m])<br>
+        onset[m] = <span class="kw">max</span>( E[m] − E[m−1], <span class="num">0</span> )<br>
+        <span class="comment">// 2. Peaks above threshold = beats</span><br>
+        threshold = mean + <span class="num">0.5</span> × std
+      </div>
+      <div class="chart-wrap" style="height:180px;margin-top:12px;">
+        <canvas id="onsetChart"></canvas>
+        <div class="empty-graph" id="onsetEmpty">Awaiting analysis</div>
+      </div>
+      <div class="beat-indicator" id="beatIndicator" style="display:none;">
+        <div class="beat-pulse" id="beatPulse"></div>
+        <span style="font-size:13px;color:var(--text2);" id="beatLabel">Beat timing active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. AUTOCORRELATION -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>⑥ Autocorrelation — Tempo Curve</h2>
+        <p>Finds the most likely BPM by measuring self-similarity at different delays.</p>
+      </div>
+      <div class="step-badge">STEP 6</div>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        R[τ] = <span class="kw">Σ</span><sub>n</sub> onset[n] · onset[n+τ]<br>
+        <span class="comment">// Computed via FFT: O(N log N)</span><br>
+        BPM(τ) = <span class="num">60</span> · sr / (τ · hop)<br>
+        <span class="comment">// Peak of R → dominant tempo</span>
+      </div>
+      <div class="chart-wrap" style="height:180px;margin-top:12px;">
+        <canvas id="acorrChart"></canvas>
+        <div class="empty-graph" id="acorrEmpty">Awaiting analysis</div>
+      </div>
+      <div class="note-box orange">
+        🟠 The tallest peak on this curve is the detected BPM. Half-tempo and double-tempo peaks are also common — the algorithm picks the most musically plausible one.
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. BEAT GRID -->
+  <div class="panel full">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <h2>⑦ Beat Grid — Tap Points</h2>
+        <p>Every detected beat plotted as a timeline. Green dots = where to tap your foot.</p>
+      </div>
+      <div class="step-badge">RESULT</div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-wrap" style="height:100px;">
+        <canvas id="beatGridChart"></canvas>
+        <div class="empty-graph" id="beatGridEmpty">Awaiting analysis</div>
+      </div>
+      <div class="beat-grid-wrap" id="beatDots"></div>
+      <div class="note-box green" style="margin-top:12px;" id="beatSummary" style="display:none;">
+        Upload a song to see the beat summary.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-grid -->
+
+<script>
+const API = 'http://localhost:5050';
+const COLORS = {
+  accent:  '#00d4aa',
+  accent2: '#0099ff',
+  accent3: '#ff6b35',
+  accent4: '#c084fc',
+  text:    '#e8edf2',
+  text2:   '#8a97a8',
+  border:  '#1e2530',
+  bg3:     '#1a1f26',
+};
+
+// Chart.js defaults
+Chart.defaults.color = COLORS.text2;
+Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+Chart.defaults.font.size = 11;
+
+let charts = {};
+
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const canvas = document.getElementById(id);
+  canvas.style.display = 'block';
+  charts[id] = new Chart(canvas, config);
+  return charts[id];
+}
+
+function hideEmpty(id) {
+  const el = document.getElementById(id + 'Empty');
+  if (el) el.style.display = 'none';
+}
+
+// ── FILE INPUT ──
+const fileInput = document.getElementById('fileInput');
+const dropZone  = document.getElementById('dropZone');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+async function processFile(file) {
+  if (!file.name.endsWith('.wav')) {
+    alert('Please upload a WAV file. Convert MP3 → WAV using Audacity or FFmpeg:\nffmpeg -i song.mp3 song.wav');
+    return;
+  }
+
+  // Show player
+  const player = document.getElementById('audioPlayer');
+  player.src = URL.createObjectURL(file);
+  document.getElementById('playerFile').textContent = file.name;
+  document.getElementById('playerWrap').style.display = 'flex';
+
+  // Show progress
+  const progressWrap = document.getElementById('progressWrap');
+  progressWrap.style.display = 'block';
+  setProgress(10, 'Uploading to backend…');
+
+  showLoading('Uploading audio…');
+
+  const formData = new FormData();
+  formData.append('audio', file);
+
+  try {
+    setProgress(30, 'Running FFT analysis…');
+    showLoading('Running Fourier Transform…');
+
+    const res = await fetch(`${API}/analyze`, { method: 'POST', body: formData });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Server error');
+    }
+
+    setProgress(70, 'Building graphs…');
+    showLoading('Rendering graphs…');
+
+    const data = await res.json();
+    setProgress(100, 'Done!');
+    hideLoading();
+
+    renderAll(data);
+
+  } catch (e) {
+    hideLoading();
+    setProgress(0, '');
+    progressWrap.style.display = 'none';
+    alert('Error: ' + e.message + '\n\nMake sure the Flask backend is running:\n  cd backend && python app.py');
+  }
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressFg').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingMsg').textContent = msg;
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ── RENDER ALL ──
+function renderAll(data) {
+  const { meta, waveform, fft, phase, spectrogram, onset, autocorrelation } = data;
+
+  // Meta strip
+  const metaStrip = document.getElementById('metaStrip');
+  metaStrip.style.display = 'flex';
+  document.getElementById('metaBpm').textContent     = meta.bpm || '—';
+  document.getElementById('metaSr').textContent      = (meta.sample_rate / 1000).toFixed(1) + 'k';
+  document.getElementById('metaDur').textContent     = meta.duration;
+  document.getElementById('metaBeats').textContent   = meta.n_beats;
+  document.getElementById('metaSamples').textContent = (meta.n_samples / 1000).toFixed(1) + 'k';
+
+  renderWaveform(waveform);
+  renderFFT(fft);
+  renderPhase(phase);
+  renderSpectrogram(spectrogram);
+  renderOnset(onset);
+  renderAutocorrelation(autocorrelation, meta.bpm);
+  renderBeatGrid(onset.beat_times, meta.duration, meta.bpm);
+}
+
+// ① WAVEFORM
+function renderWaveform(w) {
+  hideEmpty('wave');
+  const step = Math.max(1, Math.floor(w.times.length / 1200));
+  const times = w.times.filter((_, i) => i % step === 0);
+  const amps  = w.amplitudes.filter((_, i) => i % step === 0);
+  makeChart('waveChart', {
+    type: 'line',
+    data: {
+      labels: times.map(t => t.toFixed(1)),
+      datasets: [{
+        data: amps,
+        borderColor: COLORS.accent,
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { grid: { color: COLORS.border }, ticks: { maxTicksLimit: 10, callback: v => times[v] ? times[v].toFixed(1)+'s' : '' } },
+        y: { grid: { color: COLORS.border }, min: -1.1, max: 1.1, ticks: { stepSize: 0.5 } }
+      }
+    }
+  });
+}
+
+// ② FFT MAGNITUDE
+function renderFFT(f) {
+  hideEmpty('fft');
+  const freqs = f.freqs, mags = f.magnitudes;
+
+  // Find bass region indices (60–250 Hz)
+  const bassColors = freqs.map(fr => fr >= 60 && fr <= 250 ? COLORS.accent : COLORS.accent2 + '88');
+
+  makeChart('fftChart', {
+    type: 'bar',
+    data: {
+      labels: freqs.map(fr => fr.toFixed(0)),
+      datasets: [{
+        data: mags,
+        backgroundColor: bassColors,
+        borderWidth: 0,
+        borderRadius: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => freqs[items[0].dataIndex].toFixed(1) + ' Hz',
+            label: item => 'Magnitude: ' + item.raw.toFixed(2),
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          max: 4000,
+          ticks: { maxTicksLimit: 12, callback: (_, i) => freqs[i] > 0 ? Math.round(freqs[i]) + 'Hz' : '' }
+        },
+        y: { grid: { color: COLORS.border }, ticks: { maxTicksLimit: 5 } }
+      }
+    }
+  });
+}
+
+// ③ PHASE SPECTRUM
+function renderPhase(p) {
+  hideEmpty('phase');
+  const freqs = p.freqs, vals = p.values;
+  makeChart('phaseChart', {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: freqs.slice(0, 400).map((f, i) => ({ x: f, y: vals[i] })),
+        backgroundColor: COLORS.accent4 + '88',
+        pointRadius: 1.5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: {
+          grid: { color: COLORS.border },
+          title: { display: true, text: 'Frequency (Hz)', color: COLORS.text2 },
+          max: 8000,
+        },
+        y: {
+          grid: { color: COLORS.border },
+          min: -Math.PI, max: Math.PI,
+          title: { display: true, text: 'Phase (radians)', color: COLORS.text2 },
+          ticks: {
+            callback: v => {
+              if (Math.abs(v) < 0.1) return '0';
+              if (Math.abs(v - Math.PI) < 0.1) return 'π';
+              if (Math.abs(v + Math.PI) < 0.1) return '−π';
+              return v.toFixed(1);
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ④ SPECTROGRAM
+function renderSpectrogram(s) {
+  const canvas = document.getElementById('spectrogramCanvas');
+  const empty  = document.getElementById('specEmpty');
+  const spec   = s.magnitudes;
+  const nFreq  = spec.length;
+  const nTime  = spec[0].length;
+
+  canvas.width  = nTime;
+  canvas.height = nFreq;
+  canvas.style.display = 'block';
+  empty.style.display  = 'none';
+
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(nTime, nFreq);
+
+  for (let fi = 0; fi < nFreq; fi++) {
+    for (let ti = 0; ti < nTime; ti++) {
+      const val = spec[fi][ti]; // 0–1
+      const idx = ((nFreq - 1 - fi) * nTime + ti) * 4;
+      // Viridis-like colormap
+      const r = Math.round(val > 0.7 ? 253 : val > 0.4 ? 59 + val * 200 : 68);
+      const g = Math.round(val > 0.7 ? 231 - val * 50 : val > 0.4 ? val * 230 : 1 + val * 100);
+      const b = Math.round(val > 0.7 ? 37 : val > 0.4 ? 210 - val * 280 : 84 + val * 80);
+      img.data[idx]   = r;
+      img.data[idx+1] = g;
+      img.data[idx+2] = b;
+      img.data[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// ⑤ ONSET ENVELOPE
+function renderOnset(o) {
+  hideEmpty('onset');
+  const times = o.times, env = o.envelope, beatTimes = o.beat_times, threshold = o.threshold;
+
+  // Mark beat positions
+  const beatSet = new Set(beatTimes.map(bt => {
+    const idx = times.findIndex(t => Math.abs(t - bt) < 0.1);
+    return idx;
+  }));
+
+  const pointColors = env.map((_, i) => beatSet.has(i) ? COLORS.accent3 : 'transparent');
+  const pointSizes  = env.map((_, i) => beatSet.has(i) ? 5 : 0);
+
+  const step = Math.max(1, Math.floor(times.length / 800));
+
+  makeChart('onsetChart', {
+    type: 'line',
+    data: {
+      labels: times.filter((_, i) => i % step === 0).map(t => t.toFixed(2)),
+      datasets: [
+        {
+          label: 'Onset strength',
+          data: env.filter((_, i) => i % step === 0),
+          borderColor: COLORS.accent2,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          backgroundColor: COLORS.accent2 + '18',
+          tension: 0.3,
+        },
+        {
+          label: 'Threshold',
+          data: times.filter((_, i) => i % step === 0).map(() => threshold),
+          borderColor: COLORS.accent3 + '88',
+          borderWidth: 1,
+          pointRadius: 0,
+          borderDash: [4, 3],
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: { grid: { color: COLORS.border }, ticks: { maxTicksLimit: 10 } },
+        y: { grid: { color: COLORS.border }, min: 0, max: 1.1 }
+      }
+    }
+  });
+
+  // Beat pulse animation
+  document.getElementById('beatIndicator').style.display = 'flex';
+  const pulse = document.getElementById('beatPulse');
+  const label = document.getElementById('beatLabel');
+  let beatIdx = 0;
+  const audioPlayer = document.getElementById('audioPlayer');
+  function checkBeat() {
+    const t = audioPlayer.currentTime;
+    while (beatIdx < beatTimes.length && beatTimes[beatIdx] < t) {
+      beatIdx++;
+      pulse.classList.remove('pulsing');
+      void pulse.offsetWidth;
+      pulse.classList.add('pulsing');
+    }
+    label.textContent = `Beat ${beatIdx} / ${beatTimes.length} — ${(o.beat_times[Math.max(0,beatIdx-1)] || 0).toFixed(2)}s`;
+    requestAnimationFrame(checkBeat);
+  }
+  checkBeat();
+}
+
+// ⑥ AUTOCORRELATION
+function renderAutocorrelation(a, bpm) {
+  hideEmpty('acorr');
+  const bpmAxis = a.bpm_axis, vals = a.values;
+
+  // Find peak
+  let peakIdx = 0, peakVal = 0;
+  vals.forEach((v, i) => { if (v > peakVal) { peakVal = v; peakIdx = i; } });
+
+  const bgColors = bpmAxis.map((_, i) => i === peakIdx ? COLORS.accent3 : COLORS.accent4 + '44');
+
+  makeChart('acorrChart', {
+    type: 'bar',
+    data: {
+      labels: bpmAxis.map(b => b.toFixed(0)),
+      datasets: [{
+        label: 'Autocorrelation',
+        data: vals,
+        backgroundColor: bgColors,
+        borderWidth: 0,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => bpmAxis[items[0].dataIndex].toFixed(1) + ' BPM',
+            label: item => 'Correlation: ' + item.raw.toFixed(3),
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { maxTicksLimit: 12, callback: (_, i) => bpmAxis[i] ? bpmAxis[i].toFixed(0) : '' }
+        },
+        y: { grid: { color: COLORS.border }, min: 0, max: 1.1 }
+      }
+    }
+  });
+}
+
+// ⑦ BEAT GRID
+function renderBeatGrid(beatTimes, duration, bpm) {
+  hideEmpty('beatGrid');
+
+  makeChart('beatGridChart', {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Beats',
+        data: beatTimes.map(t => ({ x: t, y: 0.5 })),
+        backgroundColor: COLORS.accent,
+        pointRadius: 6,
+        pointStyle: 'triangle',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => 'Beat at ' + items[0].raw.x.toFixed(2) + 's',
+            label: () => 'Tap here!',
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: COLORS.border }, min: 0, max: duration, title: { display: true, text: 'Time (seconds)', color: COLORS.text2 } },
+        y: { display: false, min: 0, max: 1 }
+      }
+    }
+  });
+
+  // Dot strip
+  const dotsEl = document.getElementById('beatDots');
+  dotsEl.innerHTML = '';
+  beatTimes.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'beat-dot';
+    dot.id = 'dot-' + i;
+    dotsEl.appendChild(dot);
+  });
+
+  // Animate dots with audio
+  const audioPlayer = document.getElementById('audioPlayer');
+  let lastDot = -1;
+  function animDots() {
+    const t = audioPlayer.currentTime;
+    let current = -1;
+    for (let i = 0; i < beatTimes.length; i++) {
+      if (beatTimes[i] <= t) current = i;
+    }
+    if (current !== lastDot) {
+      if (lastDot >= 0) {
+        const prev = document.getElementById('dot-' + lastDot);
+        if (prev) { prev.classList.remove('active'); prev.classList.add('played'); }
+      }
+      if (current >= 0) {
+        const curr = document.getElementById('dot-' + current);
+        if (curr) curr.classList.add('active');
+      }
+      lastDot = current;
+    }
+    requestAnimationFrame(animDots);
+  }
+  animDots();
+
+  // Summary
+  const summary = document.getElementById('beatSummary');
+  const interval = bpm > 0 ? (60000 / bpm).toFixed(0) : '?';
+  summary.style.display = 'block';
+  summary.innerHTML = `✅ Found <strong>${beatTimes.length} beats</strong> at <strong>${bpm} BPM</strong> — tap your foot every <strong>${interval}ms</strong>. The green dots above show exact beat positions.`;
+}
+</script>
+</body>
+</html>
