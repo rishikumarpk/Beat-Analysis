@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>🎵 Fourier Beat Analyzer<br><sub>Tamil Music Edition</sub></h1>
-  <p><i>A full-stack, real-time signal processing engine that decodes the complex rhythms of Tamil music using raw mathematics.</i></p>
+  <h1>🎵 Fourier Beat Analyzer<br><sub>Indian Music Edition</sub></h1>
+  <p><i>A full-stack, real-time signal processing engine that decodes the complex rhythms of Indian music using raw mathematics.</i></p>
 
   <!-- Badges -->
   <p>
